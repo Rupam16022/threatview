@@ -2,7 +2,7 @@
 
 **Project:** ThreatView - Cybersecurity Threat Intelligence Dashboard  
 **Timeline:** 17 Days  
-**Current Phase:** Day 2: First Threat Feed (AlienVault OTX) — Completed & Verified  
+**Current Phase:** Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic) — Completed & Verified  
 
 ---
 
@@ -10,8 +10,8 @@
 
 - [x] **Day 1: Project Setup & Health Communications** (VERIFIED)
 - [x] **Day 2: First Threat Feed (AlienVault OTX Ingestor & ETL Normalizer)** (VERIFIED)
-- [ ] **Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic)** (UP NEXT)
-- [ ] **Day 4: Second Threat Feed (URLhaus Ingestor & Normalizer)**
+- [x] **Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic)** (VERIFIED)
+- [ ] **Day 4: Second Threat Feed (URLhaus Ingestor & Normalizer)** (UP NEXT)
 - [ ] **Day 5: Background Scheduler (APScheduler)**
 - [ ] **Day 6: Backend Dashboard APIs & Stats**
 - [ ] **Day 7: Dashboard UI Layout & Metrics (Dark Theme)**
@@ -28,35 +28,39 @@
 
 ---
 
-## Day 2: First Threat Feed (AlienVault OTX) Details
+## Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic) Details
 
 ### Completed:
-- Built core ETL Indicator Normalization & Validation engine (`backend/app/ingestors/normalizer.py`).
-  - Strict type-specific normalization for `ipv4`, `ipv6`, `domain`, `url`, `hash_md5`, `hash_sha1`, `hash_sha256`.
-  - Canonical type mapping, domain cleaning (strips accidental protocols and trailing slashes), URL scheme and host normalization.
-  - Rejection of corrupt or malformed indicators with descriptive validation errors.
-  - Confidence (0-100) and ISO 2-letter country code validation.
-- Implemented `AlienVaultOTXIngestor` (`backend/app/ingestors/otx.py`):
-  - Connects to official AlienVault OTX REST endpoints (`/pulses/subscribed`, `/pulses/activity`).
-  - Supports authentication via `OTX_API_KEY` header (`X-OTX-API-KEY`).
-  - Graceful error handling for HTTP 401/403 (informative non-crashing guidance) and HTTP 429 (rate limiting).
-  - Normalizes pulse indicators, derives threat category (`c2`, `phishing`, `malware`, `scanning`, `suspicious`) from pulse tags.
-  - Preserves source attribution (`source_name`, `source_reference`, `source_record_id`, `description`, `raw_metadata`).
-- Created independent CLI test runner (`backend/app/ingestors/run.py`):
-  - Can be executed independently via `python -m app.ingestors.run --source otx --limit 5`.
-- Documented AlienVault OTX in `docs/THREAT_FEEDS.md`.
-- Wrote automated test suites:
-  - `backend/tests/test_normalizer.py`: 8 unit tests covering all indicator types, cleaning logic, and validation rules.
-  - `backend/tests/test_otx_ingestor.py`: 3 tests with mocked OTX pulse responses, category parsing, and HTTP error handling.
-- Updated frontend dashboard roadmap and milestone tracker.
+- Created dedicated `threatview` PostgreSQL database on local PostgreSQL 18 instance.
+- Built SQLAlchemy 2.0 ORM models in `backend/app/models/`:
+  - `ThreatIndicator`: UUID primary key, indexed `indicator`, `indicator_type`, `category`, `confidence`, `country_code`, `first_seen`, `last_seen`, `created_at`, unique composite constraint on `(indicator, indicator_type)`.
+  - `ThreatObservation`: Preserves multi-source evidence and attribution, links to indicator via foreign key (`CASCADE`), `source_name`, `source_reference`, `source_record_id`, `description`, `raw_metadata` (JSONB), and timestamps.
+  - `IngestionJob`: Execution metrics, status (`running`, `completed`, `failed`), counts (`received`, `inserted`, `updated`), error logging.
+  - `User`: Accounts with role-based subscription tiers (`free` vs `pro`), credentials hashing field, organization and industry.
+  - `MonitoredDomain`: User-configured domains for automated alert scanning with active flag.
+  - `Alert`: Triggered notifications when ingested indicators match monitored domains, with email delivery and read status tracking.
+- Initialized and configured **Alembic** migration management (`backend/alembic/`):
+  - Created initial migration revision `2bcfb7b45f0e_create_initial_threatview_schema.py`.
+  - Applied migrations via `alembic upgrade head`, generating all 6 relational tables and composite indexes.
+- Implemented **ThreatService** (`backend/app/services/threat_service.py`):
+  - Deduplication: Checks existing `(indicator, indicator_type)`; updates `last_seen` and category without duplicate row creation.
+  - Observation attribution: Records source-specific observation rows linked to the parent indicator.
+  - Query methods: `get_recent_indicators`, `get_indicator_by_id`, `search_exact_indicator`, and `get_dashboard_stats`.
+- Connected FastAPI `/api/health` to perform real PostgreSQL liveness checks, returning `"database": "connected"`.
+- Updated React dashboard UI with live database connectivity status and verified proxy handshake.
 
 ### Tested:
-- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **13/13 tests passed (100%)**.
-- **Ingestion CLI**: Ran `python -m app.ingestors.run --source otx --limit 3` — verified non-crashing graceful authentication notice when API key is unconfigured.
-- **Frontend Build**: Ran `npm.cmd run build` — 0 errors, compiled in 510ms.
+- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **17/17 tests passed (100%)**.
+  - `test_database_connection`: Verified active PostgreSQL connectivity.
+  - `test_save_indicator_and_deduplication`: Verified indicator insertion, re-ingestion deduplication, and observation linking.
+  - `test_get_dashboard_stats`: Verified live database aggregation queries.
+  - `test_search_exact_indicator`: Verified indexed query matching.
+- **Alembic Migration**: `alembic upgrade head` executed cleanly with 0 errors.
+- **Live Health API**: Queried `GET /api/health` returning `{"status": "healthy", "database": "connected"}`.
+- **Frontend Build**: `npm run build` compiled cleanly in 395ms.
 
 ### Known Issues:
 - None.
 
 ### Next:
-- **Day 3**: Database Architecture (Configure PostgreSQL, build SQLAlchemy ORM models for `threat_indicators`, `threat_observations`, `ingestion_jobs`, `users`, `monitored_domains`, `alerts`, and configure Alembic migrations).
+- **Day 4**: Integrate Second Threat Feed (URLhaus by abuse.ch), parse malicious URL feeds, normalize indicators, and store observations into the database with duplicate handling.

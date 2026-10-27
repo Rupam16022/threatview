@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/threatview"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/threatview"
 
     SECRET_KEY: str = "threatview_dev_insecure_secret_key_change_me_9381028401"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
