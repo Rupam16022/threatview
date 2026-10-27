@@ -53,12 +53,43 @@ ThreatView ingests and normalizes indicators of compromise (IoCs) exclusively fr
 
 ## 2. URLhaus (abuse.ch)
 
-- **Source Name:** URLhaus
+- **Source Name:** URLhaus (abuse.ch & Spamhaus)
 - **Official Website:** [https://urlhaus.abuse.ch/](https://urlhaus.abuse.ch/)
-- **Documentation:** [https://urlhaus-api.abuse.ch/](https://urlhaus-api.abuse.ch/)
-- **Status:** *Scheduled for Day 4*
+- **API Documentation:** [https://urlhaus-api.abuse.ch/](https://urlhaus-api.abuse.ch/)
+- **Status:** **Integrated (Day 4)**
 
-*(Documentation will be populated during Day 4 implementation)*
+### Endpoints Used
+1. `GET /v1/urls/recent/`
+   - Purpose: Fetches the most recently submitted malicious URLs actively distributing malware or associated with botnet payloads.
+   - Response: JSON payload containing list of records with `id`, `url`, `url_status`, `threat`, `tags`, `reporter`, `dateadded`, `urlhaus_reference`.
+
+### Authentication Requirements
+- **Header:** `Auth-Key: <URLHAUS_API_KEY>`
+- **Cost:** Free community access available via the Spamhaus / abuse.ch Customer Portal.
+- **Environment Variable:** `URLHAUS_API_KEY` in `backend/.env`.
+
+### Refresh Frequency
+- **Default Ingestion Interval:** Every 60 minutes via background scheduler.
+- **Manual Trigger:** `python -m app.ingestors.run --source urlhaus --limit 20`
+
+### Collected Data Fields
+| Raw URLhaus Field | ThreatView Schema Field | Normalization & Handling |
+|---|---|---|
+| `url` | `indicator` | Normalized via `normalize_indicator` (lowercase scheme & netloc, validated structure) |
+| `"url"` | `indicator_type` | Standard canonical type: `"url"` |
+| `threat`, `tags` | `category` | Inferred as `c2` (if botnet/c2 tags exist), `phishing`, or `malware` (default for malware downloads) |
+| `dateadded` | `first_seen`, `last_seen` | Converted from `YYYY-MM-DD HH:MM:SS UTC` string into timezone-aware UTC datetime |
+| `id` | `source_record_id` | URLhaus numeric ID (e.g. `3391820`) |
+| `urlhaus_reference` | `source_reference` | Direct link to abuse.ch entry (e.g. `https://urlhaus.abuse.ch/url/3391820/`) |
+| `reporter` | `description` | e.g. `"Malicious URL reported by {reporter} (Status: online)"` |
+| Complete record | `raw_metadata` | Preserved in `threat_observations.raw_metadata` (JSONB) |
+
+### Rate Limits & Headers
+- URLhaus permits automated polling at reasonable frequencies (recommended maximum 1 request per minute for continuous feeds; hourly for standard intervals).
+- Non-crashing exception handling on HTTP 401, 403, and 429.
+
+### Attribution Requirements
+- Source attribution strictly preserved as `"URLhaus"` with direct reference links to each URL entry on `https://urlhaus.abuse.ch`.
 
 ---
 

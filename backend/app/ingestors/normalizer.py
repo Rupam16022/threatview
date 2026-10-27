@@ -76,6 +76,17 @@ def normalize_url(value: str) -> str:
     parsed = urlparse(value)
     if not parsed.netloc:
         raise ValueError(f"Invalid URL missing network location: '{value}'")
+
+    host = parsed.hostname or (parsed.netloc.split(":")[0] if parsed.netloc else "")
+    if not host:
+        raise ValueError(f"Invalid URL missing host: '{value}'")
+
+    # Host must either be a valid IP address or have valid domain structure
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        if "." not in host:
+            raise ValueError(f"Invalid URL host '{host}' (no domain suffix or IP format)")
     
     # Normalize scheme and host to lowercase, keep path and query intact
     scheme = parsed.scheme.lower()

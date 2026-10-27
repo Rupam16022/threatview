@@ -2,7 +2,7 @@
 
 **Project:** ThreatView - Cybersecurity Threat Intelligence Dashboard  
 **Timeline:** 17 Days  
-**Current Phase:** Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic) — Completed & Verified  
+**Current Phase:** Day 4: Second Threat Feed (URLhaus) — Completed & Verified  
 
 ---
 
@@ -11,8 +11,8 @@
 - [x] **Day 1: Project Setup & Health Communications** (VERIFIED)
 - [x] **Day 2: First Threat Feed (AlienVault OTX Ingestor & ETL Normalizer)** (VERIFIED)
 - [x] **Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic)** (VERIFIED)
-- [ ] **Day 4: Second Threat Feed (URLhaus Ingestor & Normalizer)** (UP NEXT)
-- [ ] **Day 5: Background Scheduler (APScheduler)**
+- [x] **Day 4: Second Threat Feed (URLhaus Ingestor & De-duplication)** (VERIFIED)
+- [ ] **Day 5: Background Scheduler (APScheduler)** (UP NEXT)
 - [ ] **Day 6: Backend Dashboard APIs & Stats**
 - [ ] **Day 7: Dashboard UI Layout & Metrics (Dark Theme)**
 - [ ] **Day 8: Connect Live Database to Dashboard**
@@ -28,39 +28,34 @@
 
 ---
 
-## Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic) Details
+## Day 4: Second Threat Feed (URLhaus) Details
 
 ### Completed:
-- Created dedicated `threatview` PostgreSQL database on local PostgreSQL 18 instance.
-- Built SQLAlchemy 2.0 ORM models in `backend/app/models/`:
-  - `ThreatIndicator`: UUID primary key, indexed `indicator`, `indicator_type`, `category`, `confidence`, `country_code`, `first_seen`, `last_seen`, `created_at`, unique composite constraint on `(indicator, indicator_type)`.
-  - `ThreatObservation`: Preserves multi-source evidence and attribution, links to indicator via foreign key (`CASCADE`), `source_name`, `source_reference`, `source_record_id`, `description`, `raw_metadata` (JSONB), and timestamps.
-  - `IngestionJob`: Execution metrics, status (`running`, `completed`, `failed`), counts (`received`, `inserted`, `updated`), error logging.
-  - `User`: Accounts with role-based subscription tiers (`free` vs `pro`), credentials hashing field, organization and industry.
-  - `MonitoredDomain`: User-configured domains for automated alert scanning with active flag.
-  - `Alert`: Triggered notifications when ingested indicators match monitored domains, with email delivery and read status tracking.
-- Initialized and configured **Alembic** migration management (`backend/alembic/`):
-  - Created initial migration revision `2bcfb7b45f0e_create_initial_threatview_schema.py`.
-  - Applied migrations via `alembic upgrade head`, generating all 6 relational tables and composite indexes.
-- Implemented **ThreatService** (`backend/app/services/threat_service.py`):
-  - Deduplication: Checks existing `(indicator, indicator_type)`; updates `last_seen` and category without duplicate row creation.
-  - Observation attribution: Records source-specific observation rows linked to the parent indicator.
-  - Query methods: `get_recent_indicators`, `get_indicator_by_id`, `search_exact_indicator`, and `get_dashboard_stats`.
-- Connected FastAPI `/api/health` to perform real PostgreSQL liveness checks, returning `"database": "connected"`.
-- Updated React dashboard UI with live database connectivity status and verified proxy handshake.
+- Implemented **URLhaus Ingestor** (`backend/app/ingestors/urlhaus.py`):
+  - Connects to abuse.ch / Spamhaus official REST endpoint (`/v1/urls/recent/`).
+  - Supports `Auth-Key` authentication via `URLHAUS_API_KEY`.
+  - Non-crashing exception handling on HTTP 401, 403, 429, and `unknown_auth_key`.
+  - Parses malicious URLs, reports, threat types, timestamps, and tags into normalized indicator items.
+- Enhanced ETL Indicator Normalizer (`backend/app/ingestors/normalizer.py`):
+  - Strengthened `normalize_url` validation to require valid IP addresses or domain structures in URL hostnames.
+- Upgraded Manual Ingestion CLI (`backend/app/ingestors/run.py`):
+  - Supports `--source otx`, `--source urlhaus`, and `--source all`.
+  - Persists normalized indicators from both feeds into PostgreSQL in transactional batches.
+  - Automatically records ingestion job metadata, counts, and statuses in the `ingestion_jobs` database table.
+- Documented URLhaus in `docs/THREAT_FEEDS.md`.
+- Wrote automated tests in `backend/tests/test_urlhaus_ingestor.py`:
+  - `test_parse_urlhaus_records`: Validated real-world record normalization, category mapping (`c2`, `phishing`, `malware`), and malformed URL filtering.
+  - `test_urlhaus_auth_failure_handling`: Verified non-crashing authentication error handling.
+  - `test_multi_feed_deduplication_and_attribution`: Verified that two independent feeds (OTX and URLhaus) observing the exact same threat indicator update the single canonical record in `threat_indicators` without duplicate rows, while preserving both source observations in `threat_observations`.
+- Updated frontend dashboard UI with Day 4 completed status and roadmap badge.
 
 ### Tested:
-- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **17/17 tests passed (100%)**.
-  - `test_database_connection`: Verified active PostgreSQL connectivity.
-  - `test_save_indicator_and_deduplication`: Verified indicator insertion, re-ingestion deduplication, and observation linking.
-  - `test_get_dashboard_stats`: Verified live database aggregation queries.
-  - `test_search_exact_indicator`: Verified indexed query matching.
-- **Alembic Migration**: `alembic upgrade head` executed cleanly with 0 errors.
-- **Live Health API**: Queried `GET /api/health` returning `{"status": "healthy", "database": "connected"}`.
-- **Frontend Build**: `npm run build` compiled cleanly in 395ms.
+- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **20/20 tests passed (100%)**.
+- **CLI Runner**: Verified `python -m app.ingestors.run --source urlhaus --limit 5` successfully records the execution in `ingestion_jobs` table.
+- **Frontend Build**: `npm run build` compiled with 0 errors.
 
 ### Known Issues:
 - None.
 
 ### Next:
-- **Day 4**: Integrate Second Threat Feed (URLhaus by abuse.ch), parse malicious URL feeds, normalize indicators, and store observations into the database with duplicate handling.
+- **Day 5**: Background Scheduler (Integrate APScheduler to run periodic threat feed updates every 60 minutes, prevent overlapping ingestion jobs, and log history).

@@ -11,6 +11,7 @@ from app.ingestors.normalizer import (
     normalize_hash,
 )
 from app.ingestors.otx import AlienVaultOTXIngestor, OTXIngestionError
+from app.ingestors.urlhaus import URLhausIngestor, URLhausIngestionError
 
 __all__ = [
     "normalize_indicator",
@@ -20,4 +21,6 @@ __all__ = [
     "normalize_hash",
     "AlienVaultOTXIngestor",
     "OTXIngestionError",
+    "URLhausIngestor",
+    "URLhausIngestionError",
 ]
