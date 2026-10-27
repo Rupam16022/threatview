@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import health_router
+from app.routes import health_router, scheduler_router
+from app.scheduler.jobs import threat_scheduler
 
 
 @asynccontextmanager
@@ -10,11 +11,23 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan manager for startup and shutdown procedures.
     """
-    # Startup tasks (e.g. database connection check, scheduler init in Day 5)
     print(f"[*] Starting {settings.APP_NAME} API in {settings.APP_ENV} mode...")
+    
+    # Initialize background threat feed scheduler if enabled
+    if settings.ENABLE_SCHEDULER:
+        try:
+            threat_scheduler.start()
+            print(f"[*] Background threat feed scheduler started (Interval: {settings.INGESTION_INTERVAL_MINUTES}m).")
+        except Exception as exc:
+            print(f"[!] Warning: Failed to start background scheduler: {exc}")
+
     yield
+
     # Shutdown tasks
     print(f"[*] Shutting down {settings.APP_NAME} API...")
+    if threat_scheduler.is_running():
+        threat_scheduler.shutdown()
+        print("[*] Background scheduler shut down.")
 
 
 app = FastAPI(
@@ -37,6 +50,7 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(health_router, prefix=settings.API_PREFIX)
+app.include_router(scheduler_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/", tags=["Root"])
@@ -49,5 +63,6 @@ async def root():
         "description": "Cybersecurity Threat Intelligence API",
         "documentation": "/docs",
         "health": f"{settings.API_PREFIX}/health",
+        "scheduler": f"{settings.API_PREFIX}/scheduler/status",
         "version": "0.1.0",
     }

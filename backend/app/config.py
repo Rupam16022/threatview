@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     INGESTION_INTERVAL_MINUTES: int = 60
     MAX_INDICATORS_PER_FETCH: int = 500
+    ENABLE_SCHEDULER: bool = True
 
     @property
     def cors_origin_list(self) -> List[str]:

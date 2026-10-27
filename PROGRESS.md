@@ -2,7 +2,7 @@
 
 **Project:** ThreatView - Cybersecurity Threat Intelligence Dashboard  
 **Timeline:** 17 Days  
-**Current Phase:** Day 4: Second Threat Feed (URLhaus) — Completed & Verified  
+**Current Phase:** Day 5: Background Scheduler (APScheduler) — Completed & Verified  
 
 ---
 
@@ -12,8 +12,8 @@
 - [x] **Day 2: First Threat Feed (AlienVault OTX Ingestor & ETL Normalizer)** (VERIFIED)
 - [x] **Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic)** (VERIFIED)
 - [x] **Day 4: Second Threat Feed (URLhaus Ingestor & De-duplication)** (VERIFIED)
-- [ ] **Day 5: Background Scheduler (APScheduler)** (UP NEXT)
-- [ ] **Day 6: Backend Dashboard APIs & Stats**
+- [x] **Day 5: Background Scheduler (APScheduler & Concurrency Locking)** (VERIFIED)
+- [ ] **Day 6: Backend Dashboard APIs & Stats** (UP NEXT)
 - [ ] **Day 7: Dashboard UI Layout & Metrics (Dark Theme)**
 - [ ] **Day 8: Connect Live Database to Dashboard**
 - [ ] **Day 9: Charts & Visualizations (Recharts)**
@@ -28,34 +28,36 @@
 
 ---
 
-## Day 4: Second Threat Feed (URLhaus) Details
+## Day 5: Background Scheduler (APScheduler) Details
 
 ### Completed:
-- Implemented **URLhaus Ingestor** (`backend/app/ingestors/urlhaus.py`):
-  - Connects to abuse.ch / Spamhaus official REST endpoint (`/v1/urls/recent/`).
-  - Supports `Auth-Key` authentication via `URLHAUS_API_KEY`.
-  - Non-crashing exception handling on HTTP 401, 403, 429, and `unknown_auth_key`.
-  - Parses malicious URLs, reports, threat types, timestamps, and tags into normalized indicator items.
-- Enhanced ETL Indicator Normalizer (`backend/app/ingestors/normalizer.py`):
-  - Strengthened `normalize_url` validation to require valid IP addresses or domain structures in URL hostnames.
-- Upgraded Manual Ingestion CLI (`backend/app/ingestors/run.py`):
-  - Supports `--source otx`, `--source urlhaus`, and `--source all`.
-  - Persists normalized indicators from both feeds into PostgreSQL in transactional batches.
-  - Automatically records ingestion job metadata, counts, and statuses in the `ingestion_jobs` database table.
-- Documented URLhaus in `docs/THREAT_FEEDS.md`.
-- Wrote automated tests in `backend/tests/test_urlhaus_ingestor.py`:
-  - `test_parse_urlhaus_records`: Validated real-world record normalization, category mapping (`c2`, `phishing`, `malware`), and malformed URL filtering.
-  - `test_urlhaus_auth_failure_handling`: Verified non-crashing authentication error handling.
-  - `test_multi_feed_deduplication_and_attribution`: Verified that two independent feeds (OTX and URLhaus) observing the exact same threat indicator update the single canonical record in `threat_indicators` without duplicate rows, while preserving both source observations in `threat_observations`.
-- Updated frontend dashboard UI with Day 4 completed status and roadmap badge.
+- Implemented **ThreatFeedScheduler** (`backend/app/scheduler/jobs.py`):
+  - Uses `APScheduler` background scheduler configured with 60-minute default interval (`INGESTION_INTERVAL_MINUTES=60`).
+  - Added dedicated per-source mutex locks (`_locks = {"otx": Lock(), "urlhaus": Lock()}`) strictly preventing overlapping ingestion runs for the same source.
+  - Automatically records every run in `ingestion_jobs` with start, completion, record volume, and error messages.
+  - Non-crashing exception handling: if a threat feed fails or rate limits, the failure is cleanly recorded in the database while the scheduler and web server continue operating smoothly.
+  - Provides dual operational modes:
+    1. Single-process local development mode (managed via FastAPI `lifespan` in `app/main.py`).
+    2. Dedicated standalone background worker process (`python -m app.scheduler.jobs`) suitable for containerized and production deployments.
+- Created Scheduler REST API endpoints (`backend/app/routes/scheduler.py`):
+  - `GET /api/scheduler/status`: Returns live running state, active jobs, intervals, and upcoming execution timestamps.
+  - `GET /api/scheduler/jobs`: Returns logged ingestion history directly from PostgreSQL.
+  - `POST /api/scheduler/trigger/{source}`: Dispatches on-demand ingestion for `otx` or `urlhaus` asynchronously.
+- Wrote automated tests in `backend/tests/test_scheduler.py`:
+  - `test_scheduler_lifecycle`: Validated scheduler startup, job registry, and clean shutdown.
+  - `test_overlapping_run_prevention`: Verified that concurrent execution requests for the same source are safely skipped.
+  - `test_scheduler_status_api`: Verified the `/api/scheduler/status` endpoint.
+  - `test_scheduler_jobs_history_api`: Verified the `/api/scheduler/jobs` endpoint.
+  - `test_scheduler_trigger_api`: Verified background job queueing and 400 error handling on invalid sources.
+- Updated frontend dashboard UI with Day 5 completion badge and roadmap tracking.
 
 ### Tested:
-- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **20/20 tests passed (100%)**.
-- **CLI Runner**: Verified `python -m app.ingestors.run --source urlhaus --limit 5` successfully records the execution in `ingestion_jobs` table.
-- **Frontend Build**: `npm run build` compiled with 0 errors.
+- **Pytest**: Ran `backend/venv/Scripts/python -m pytest tests/` — **25/25 tests passed (100%)**.
+- **Live Scheduler API**: Queried `GET http://localhost:5173/api/scheduler/status` &mdash; returned `{"scheduler_running": true, "active_jobs_count": 2}`.
+- **Frontend Build**: `npm run build` compiled cleanly in 430ms.
 
 ### Known Issues:
 - None.
 
 ### Next:
-- **Day 5**: Background Scheduler (Integrate APScheduler to run periodic threat feed updates every 60 minutes, prevent overlapping ingestion jobs, and log history).
+- **Day 6**: Backend Dashboard APIs (Implement `/api/dashboard/stats`, `/api/threats/recent`, `/api/dashboard/trends`, `/api/dashboard/categories`, `/api/dashboard/countries`, and add API tests).
