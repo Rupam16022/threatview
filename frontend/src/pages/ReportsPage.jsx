@@ -13,27 +13,44 @@ export default function ReportsPage() {
     setError('');
     try {
       const res = await fetch(`${API_BASE_URL}/reports/weekly`);
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      if (!res.ok) {
+        let errMsg = `Server error ${res.status}`;
+        try {
+          const jsonErr = await res.json();
+          if (jsonErr && jsonErr.detail) errMsg = jsonErr.detail;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
 
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
+      const url  = window.URL.createObjectURL(blob);
 
-      // Build filename from Content-Disposition or use default
-      const cd = res.headers.get('content-disposition') || '';
-      const match = cd.match(/filename="(.+?)"/);
-      const filename = match ? match[1] : 'threatview_report.pdf';
+      // Extract filename from Content-Disposition header if exposed, else timestamped default
+      let filename = `threatview_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+      try {
+        const cd = res.headers.get('content-disposition') || '';
+        const match = cd.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) filename = match[1];
+      } catch (_) {}
 
-      // Trigger browser download
+      // Trigger browser download via temporary anchor
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
-      a.download = filename;
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 200);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
     } catch (err) {
-      setError(`Download failed: ${err.message}. Is the backend running on port 8000?`);
+      setError(`Download failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
