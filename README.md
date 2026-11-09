@@ -1,120 +1,116 @@
-# ThreatView — Cybersecurity Threat Intelligence Dashboard
+# ThreatView — Cybersecurity Threat Intelligence Platform
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_Cloud-336791?style=flat&logo=postgresql)](https://neon.tech)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-ThreatView is a modern, full-stack cybersecurity threat intelligence platform built for small-to-medium businesses and security analysts. It collects cybersecurity indicators of compromise (IoCs) from reputable open-source intelligence (OSINT) feeds, normalizes them, and provides an interactive, dark-themed investigation dashboard.
+ThreatView is a modern, production-grade cybersecurity threat intelligence platform built for security analysts, incident responders, and organizations. It continuously ingests Indicators of Compromise (IoCs) from OSINT threat feeds, deduplicates and normalizes indicators, tracks multi-feed source attribution, monitors custom domains for security threats, and generates executive PDF intelligence reports.
 
 ---
 
-## System Architecture
+## 🌐 Live Production Deployments
 
-ThreatView utilizes a clean, decoupled 3-tier architecture:
-- **Frontend**: React 19, Vite, Tailwind CSS, Lucide React, Recharts, React Router
-- **Backend API**: FastAPI (Python 3.12+), Pydantic v2, Uvicorn, HTTPX
+- **Frontend App (Vercel):** [https://threatview-4qowf9niy-rupam16022.vercel.app](https://threatview-4qowf9niy-rupam16022.vercel.app/)
+- **Backend API (Render):** [https://threatview-xtk4.onrender.com](https://threatview-xtk4.onrender.com/)
+- **Interactive API Documentation:** [https://threatview-xtk4.onrender.com/docs](https://threatview-xtk4.onrender.com/docs)
+- **Database:** Serverless PostgreSQL on [Neon](https://neon.tech)
+
+---
+
+## 🚀 Key Features
+
+1. **Live Analytics & Visualization**:
+   - 30-day threat trend area chart powered by Recharts.
+   - Threat category distribution donut chart.
+   - Source feed attribution horizontal bar chart.
+   - Real-time database metrics (Total Indicators, 24h New, IPs, URLs).
+
+2. **Indicators Database & Search Engine**:
+   - Searchable and paginated indicator catalog with type filters (`ipv4`, `ipv6`, `url`, `domain`, `hash`).
+   - Confidence scoring meter and ISO country code flags.
+   - Exact-match IoC Lookup engine showing full threat metadata and multi-source observations.
+
+3. **Automated Intelligence Feeds & Scheduler**:
+   - Integrated with **AlienVault OTX** and **abuse.ch URLhaus**.
+   - Background ingestion engine using **APScheduler** with mutex locking to prevent overlapping runs.
+   - Manual feed execution triggers and job execution history audit trail.
+
+4. **Domain Monitoring & In-App Alerts**:
+   - Custom domain watchlists for enterprise monitoring.
+   - Real-time scanner matching monitored domains against the threat intelligence database.
+   - In-app notification alerts with read/unread statuses.
+
+5. **Executive Threat Reporting**:
+   - Instant PDF Threat Intelligence Report generator built with **ReportLab**.
+   - Generates executive summary tables, category breakdowns, and ingestion metrics for download.
+
+---
+
+## 🏗️ System Architecture
+
+- **Frontend**: React 19, Vite, Tailwind CSS v4, Lucide React, Recharts, React Router v7
+- **Backend**: FastAPI (Python 3.12+), Pydantic v2, Uvicorn, APScheduler, ReportLab, HTTPX
 - **Database**: PostgreSQL with SQLAlchemy ORM and Alembic schema migrations
-- **Threat Feeds**: AlienVault OTX, URLhaus (abuse.ch)
+- **Threat Feeds**: AlienVault OTX (Pulses API) & URLhaus (abuse.ch API)
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full architectural documentation.
-
----
-
-## Quickstart: Running Locally
-
-### Prerequisites
-- **Python 3.12+** (tested with Python 3.15)
-- **Node.js 20+** and **npm**
-
-### 1. Backend Setup
-
-```powershell
-# Navigate into backend directory
-cd backend
-
-# Create Python virtual environment
-python -m venv venv
-
-# Activate virtual environment
-.\venv\Scripts\Activate.ps1   # (On Windows PowerShell)
-# source venv/bin/activate    # (On Linux / macOS)
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Create .env file from example template
-cp .env.example .env
-
-# Run automated tests
-pytest tests/
-
-# Start FastAPI development server
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+[OSINT Threat Feeds] (OTX, URLhaus)
+        │
+        ▼
+[FastAPI Ingestors + Normalizer] ──► [APScheduler Engine]
+        │
+        ▼
+[PostgreSQL Database (Neon)] ◄─────► [ThreatService Query Layer]
+        │
+        ▼
+[FastAPI REST APIs] (/dashboard, /indicators, /monitoring, /reports)
+        │ (CORS Whitelisted)
+        ▼
+[React 19 Frontend (Vercel)] ◄─────► [Security Analyst / End User]
 ```
 
-- API Base: `http://localhost:8000`
-- Interactive Swagger Docs: `http://localhost:8000/docs`
-- Health Endpoint: `http://localhost:8000/api/health`
-
 ---
 
-### 2. Frontend Setup
+## 💻 Local Development Setup
 
-In a new terminal window:
+### 1. Backend
 
-```powershell
-# Navigate into frontend directory
+```bash
+cd backend
+python -m venv venv
+
+# Windows
+.\venv\Scripts\activate
+# Linux/macOS
+source venv/bin/activate
+
+pip install -r requirements.txt
+cp .env.example .env
+
+# Run database migrations
+alembic upgrade head
+
+# Run unit and integration tests (25/25 passing)
+pytest tests/ -v
+
+# Start backend server
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+### 2. Frontend
+
+```bash
 cd frontend
-
-# Install Node dependencies
 npm install
-
-# Start Vite development server
 npm run dev
 ```
 
-- Frontend Application: `http://localhost:5173`
-
-The frontend Vite server automatically proxies requests sent to `/api/*` to the FastAPI backend at `http://127.0.0.1:8000`.
+Visit `http://localhost:5173` to explore the dashboard locally.
 
 ---
 
-## Project Roadmap
+## 🛡️ License
 
-| Phase | Description | Status |
-|---|---|---|
-| **Day 1** | Project Setup & Health Communications | Completed |
-| **Day 2** | Threat Feed 1: AlienVault OTX Ingestion | Up next |
-| **Day 3** | Database Models (PostgreSQL + SQLAlchemy + Alembic) | Queued |
-| **Day 4** | Threat Feed 2: URLhaus Ingestion & Normalizer | Queued |
-| **Day 5** | Background Job Scheduler (APScheduler) | Queued |
-| **Day 6** | Dashboard Analytics & Aggregation Endpoints | Queued |
-| **Day 7** | Dashboard UI Layout & Metrics Cards | Queued |
-| **Day 8** | Connecting Real Database Intelligence to Frontend | Queued |
-| **Day 9** | Threat Activity & Category Visualizations (Recharts) | Queued |
-| **Day 10** | Geographic Indicator Distribution | Queued |
-| **Day 11** | IoC Search (IP, Domain, URL) | Queued |
-| **Day 12** | Domain Monitoring & Alerting Engine | Queued |
-| **Day 13** | Email Notifications System | Queued |
-| **Day 14** | Automated Weekly Threat PDF Reports (ReportLab) | Queued |
-| **Day 15** | Cloud Deployment Preparation | Queued |
-| **Day 16** | User Authentication & Tiered Access (Free vs Pro) | Queued |
-| **Day 17** | Final Audit, Performance Optimization & Polish | Queued |
-
----
-
-## Testing
-
-Run backend automated tests:
-
-```powershell
-cd backend
-.\venv\Scripts\python -m pytest tests/ -v
-```
-
----
-
-## Disclaimer
-
-ThreatView is an intelligence aggregation and investigation tool. A threat feed match constitutes evidence for investigation, not definitive proof that an indicator is compromised or actively malicious.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

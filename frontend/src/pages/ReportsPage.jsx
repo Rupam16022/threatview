@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Download, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
 export default function ReportsPage() {
   const [loading,  setLoading]  = useState(false);
@@ -11,7 +12,7 @@ export default function ReportsPage() {
     setSuccess(false);
     setError('');
     try {
-      const res = await fetch('http://localhost:8000/api/reports/weekly');
+      const res = await fetch(`${API_BASE_URL}/reports/weekly`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
 
       const blob = await res.blob();

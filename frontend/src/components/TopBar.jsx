@@ -1,7 +1,10 @@
 import React from 'react';
 import { RefreshCw, ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
 export default function TopBar({ health, loading, pingLatency, lastChecked, onRefresh }) {
+  const docsUrl = API_BASE_URL.replace(/\/api\/?$/, '') + '/docs';
+
   return (
     <header className="h-14 shrink-0 border-b border-slate-800 bg-[#020617]/90 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-30">
       <div className="flex items-center space-x-2 text-xs">
@@ -31,7 +34,7 @@ export default function TopBar({ health, loading, pingLatency, lastChecked, onRe
           <span>Refresh</span>
         </button>
         <a
-          href="http://localhost:8000/docs"
+          href={docsUrl}
           target="_blank"
           rel="noreferrer"
           className="flex items-center space-x-1.5 text-xs text-sky-400 hover:text-sky-300 bg-sky-950/40 px-3 py-1.5 rounded-lg border border-sky-800/40 transition-colors"

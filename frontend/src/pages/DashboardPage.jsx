@@ -17,6 +17,7 @@ import {
   fetchCategories,
   fetchSources,
   fetchSchedulerStatus,
+  API_BASE_URL,
 } from '../services/api';
 
 /* ── palette ─────────────────────────────────────────────────────────────── */
@@ -313,7 +314,7 @@ export default function DashboardPage() {
                     key={src}
                     onClick={async () => {
                       try {
-                        const r = await fetch(`http://localhost:8000/api/scheduler/trigger/${src}`, { method: 'POST' });
+                        const r = await fetch(`${API_BASE_URL}/scheduler/trigger/${src}`, { method: 'POST' });
                         const d = await r.json();
                         alert(d.message);
                       } catch { alert('Trigger failed'); }

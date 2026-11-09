@@ -61,7 +61,9 @@ async def root():
     return {
         "name": settings.APP_NAME,
         "version": "0.1.0",
+        "documentation": "/docs",
         "docs": "/docs",
+        "health": f"{settings.API_PREFIX}/health",
         "endpoints": {
             "health":     f"{settings.API_PREFIX}/health",
             "dashboard":  f"{settings.API_PREFIX}/dashboard/stats",
