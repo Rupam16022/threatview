@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, or_
+from sqlalchemy import func, desc, or_, cast, Date
 
 from app.models.threat import ThreatIndicator, ThreatObservation, IngestionJob
 
@@ -170,7 +170,7 @@ class ThreatService:
         Never returns fabricated numbers.
         """
         total = db.query(func.count(ThreatIndicator.id)).scalar() or 0
-        
+
         # New indicators in the last 24 hours
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         new_today = (
@@ -208,3 +208,71 @@ class ThreatService:
             "url_indicators": url_indicators,
             "last_updated": last_updated,
         }
+
+    @staticmethod
+    def get_trends(db: Session, days: int = 30) -> List[Dict[str, Any]]:
+        """
+        Return daily new indicator counts for the past N days.
+        Uses date-truncation so each row represents one calendar day.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+        rows = (
+            db.query(
+                cast(ThreatIndicator.created_at, Date).label("date"),
+                func.count(ThreatIndicator.id).label("count"),
+            )
+            .filter(ThreatIndicator.created_at >= cutoff)
+            .group_by(cast(ThreatIndicator.created_at, Date))
+            .order_by(cast(ThreatIndicator.created_at, Date))
+            .all()
+        )
+
+        return [{"date": str(row.date), "count": row.count} for row in rows]
+
+    @staticmethod
+    def get_category_distribution(db: Session) -> List[Dict[str, Any]]:
+        """Return count of indicators grouped by threat category."""
+        rows = (
+            db.query(
+                ThreatIndicator.category.label("category"),
+                func.count(ThreatIndicator.id).label("count"),
+            )
+            .group_by(ThreatIndicator.category)
+            .order_by(desc(func.count(ThreatIndicator.id)))
+            .all()
+        )
+        return [
+            {"category": row.category or "unknown", "count": row.count}
+            for row in rows
+        ]
+
+    @staticmethod
+    def get_country_distribution(db: Session) -> List[Dict[str, Any]]:
+        """Return count of indicators grouped by country code (top 20)."""
+        rows = (
+            db.query(
+                ThreatIndicator.country_code.label("country_code"),
+                func.count(ThreatIndicator.id).label("count"),
+            )
+            .filter(ThreatIndicator.country_code.isnot(None))
+            .group_by(ThreatIndicator.country_code)
+            .order_by(desc(func.count(ThreatIndicator.id)))
+            .limit(20)
+            .all()
+        )
+        return [{"country_code": row.country_code, "count": row.count} for row in rows]
+
+    @staticmethod
+    def get_source_distribution(db: Session) -> List[Dict[str, Any]]:
+        """Return count of observations grouped by source feed name."""
+        rows = (
+            db.query(
+                ThreatObservation.source_name.label("source_name"),
+                func.count(ThreatObservation.id).label("count"),
+            )
+            .group_by(ThreatObservation.source_name)
+            .order_by(desc(func.count(ThreatObservation.id)))
+            .all()
+        )
+        return [{"source_name": row.source_name, "count": row.count} for row in rows]

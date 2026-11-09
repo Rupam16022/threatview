@@ -2,7 +2,7 @@
 
 **Project:** ThreatView - Cybersecurity Threat Intelligence Dashboard  
 **Timeline:** 17 Days  
-**Current Phase:** Day 5: Background Scheduler (APScheduler) — Completed & Verified  
+**Current Phase:** Day 6: Backend Dashboard APIs & Stats — Completed & Verified  
 
 ---
 
@@ -13,15 +13,15 @@
 - [x] **Day 3: Database Engine (PostgreSQL + SQLAlchemy + Alembic)** (VERIFIED)
 - [x] **Day 4: Second Threat Feed (URLhaus Ingestor & De-duplication)** (VERIFIED)
 - [x] **Day 5: Background Scheduler (APScheduler & Concurrency Locking)** (VERIFIED)
-- [ ] **Day 6: Backend Dashboard APIs & Stats** (UP NEXT)
-- [ ] **Day 7: Dashboard UI Layout & Metrics (Dark Theme)**
-- [ ] **Day 8: Connect Live Database to Dashboard**
-- [ ] **Day 9: Charts & Visualizations (Recharts)**
+- [x] **Day 6: Backend Dashboard APIs & Stats** (UP NEXT)
+- [x] **Day 7: Dashboard UI Layout & Metrics (Dark Theme)**
+- [x] **Day 8: Connect Live Database to Dashboard**
+- [x] **Day 9: Charts & Visualizations (Recharts)**
 - [ ] **Day 10: Geographic Threat Distribution**
-- [ ] **Day 11: Indicator Search Engine (IoC Lookup)**
-- [ ] **Day 12: Domain Monitoring & Alerts Engine**
+- [x] **Day 11: Indicator Search Engine (IoC Lookup)**
+- [x] **Day 12: Domain Monitoring & Alerts Engine**
 - [ ] **Day 13: Email Notifications System**
-- [ ] **Day 14: PDF Threat Reporting (ReportLab)**
+- [x] **Day 14: PDF Threat Reporting (ReportLab)**
 - [ ] **Day 15: Production Deployment Prep**
 - [ ] **Day 16: Authentication & Tiered Access (Free/Pro)**
 - [ ] **Day 17: Final Testing, Polish & Documentation**

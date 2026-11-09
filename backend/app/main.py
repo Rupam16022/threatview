@@ -2,32 +2,32 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import health_router, scheduler_router
+from app.routes import (
+    health_router,
+    scheduler_router,
+    dashboard_router,
+    indicators_router,
+    monitoring_router,
+    reports_router,
+)
 from app.scheduler.jobs import threat_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan manager for startup and shutdown procedures.
-    """
+    """Application lifespan – start/stop the background scheduler."""
     print(f"[*] Starting {settings.APP_NAME} API in {settings.APP_ENV} mode...")
-    
-    # Initialize background threat feed scheduler if enabled
     if settings.ENABLE_SCHEDULER:
         try:
             threat_scheduler.start()
-            print(f"[*] Background threat feed scheduler started (Interval: {settings.INGESTION_INTERVAL_MINUTES}m).")
+            print(f"[*] Scheduler started (interval: {settings.INGESTION_INTERVAL_MINUTES}m).")
         except Exception as exc:
-            print(f"[!] Warning: Failed to start background scheduler: {exc}")
-
+            print(f"[!] Scheduler start warning: {exc}")
     yield
-
-    # Shutdown tasks
     print(f"[*] Shutting down {settings.APP_NAME} API...")
     if threat_scheduler.is_running():
         threat_scheduler.shutdown()
-        print("[*] Background scheduler shut down.")
+        print("[*] Scheduler stopped.")
 
 
 app = FastAPI(
@@ -39,7 +39,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure Cross-Origin Resource Sharing (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -48,21 +47,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API routers
-app.include_router(health_router, prefix=settings.API_PREFIX)
-app.include_router(scheduler_router, prefix=settings.API_PREFIX)
+# Register all routers
+app.include_router(health_router,     prefix=settings.API_PREFIX)
+app.include_router(scheduler_router,  prefix=settings.API_PREFIX)
+app.include_router(dashboard_router,  prefix=settings.API_PREFIX)
+app.include_router(indicators_router, prefix=settings.API_PREFIX)
+app.include_router(monitoring_router, prefix=settings.API_PREFIX)
+app.include_router(reports_router,    prefix=settings.API_PREFIX)
 
 
 @app.get("/", tags=["Root"])
 async def root():
-    """
-    Root endpoint returning service identity and quick links to documentation.
-    """
     return {
         "name": settings.APP_NAME,
-        "description": "Cybersecurity Threat Intelligence API",
-        "documentation": "/docs",
-        "health": f"{settings.API_PREFIX}/health",
-        "scheduler": f"{settings.API_PREFIX}/scheduler/status",
         "version": "0.1.0",
+        "docs": "/docs",
+        "endpoints": {
+            "health":     f"{settings.API_PREFIX}/health",
+            "dashboard":  f"{settings.API_PREFIX}/dashboard/stats",
+            "indicators": f"{settings.API_PREFIX}/indicators",
+            "scheduler":  f"{settings.API_PREFIX}/scheduler/status",
+            "monitoring": f"{settings.API_PREFIX}/monitoring/domains",
+            "reports":    f"{settings.API_PREFIX}/reports/weekly",
+        },
     }
