@@ -133,9 +133,18 @@ class ThreatService:
         offset: int = 0,
         indicator_type: Optional[str] = None,
         category: Optional[str] = None,
+        plan: str = "pro",
     ) -> List[ThreatIndicator]:
-        """Fetch recently observed threat indicators with pagination."""
+        """
+        Fetch recently observed threat indicators with pagination and tiered access.
+        - 'free' plan: Restricts results to indicators ingested in the last 24 hours.
+        - 'pro' plan: Full access to all historical threat data.
+        """
         query = db.query(ThreatIndicator)
+        if plan.lower() == "free":
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            query = query.filter(ThreatIndicator.created_at >= cutoff)
+
         if indicator_type:
             query = query.filter(ThreatIndicator.indicator_type == indicator_type.lower())
         if category:

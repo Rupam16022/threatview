@@ -16,10 +16,12 @@ def list_indicators(
     offset: int = Query(0, ge=0),
     indicator_type: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
+    plan: str = Query("pro", description="Subscription tier: 'free' limits to last 24h, 'pro' has full historical access"),
     db: Session = Depends(get_db),
 ):
     """
-    Paginated list of threat indicators with optional filtering by type or category.
+    Paginated list of threat indicators with optional filtering by type or category,
+    supporting Free vs Pro tiered retention access.
     """
     return ThreatService.get_recent_indicators(
         db,
@@ -27,6 +29,7 @@ def list_indicators(
         offset=offset,
         indicator_type=indicator_type,
         category=category,
+        plan=plan,
     )
 
 

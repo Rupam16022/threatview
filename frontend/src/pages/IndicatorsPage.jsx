@@ -24,12 +24,13 @@ export default function IndicatorsPage() {
   const [loading, setLoading] = useState(true);
   const [page,    setPage]    = useState(0);
   const [typeFilter, setTypeFilter] = useState('');
+  const [plan,    setPlan]    = useState('pro');
   const limit = 25;
 
   const load = async () => {
     setLoading(true);
     try {
-      const params = { limit, offset: page * limit };
+      const params = { limit, offset: page * limit, plan };
       if (typeFilter) params.indicator_type = typeFilter;
       const res = await api.get('/indicators', { params });
       setRows(res.data);
@@ -40,7 +41,7 @@ export default function IndicatorsPage() {
     }
   };
 
-  useEffect(() => { load(); }, [page, typeFilter]);
+  useEffect(() => { load(); }, [page, typeFilter, plan]);
 
   return (
     <div className="p-6 space-y-5">
@@ -50,17 +51,39 @@ export default function IndicatorsPage() {
           <p className="text-xs text-slate-400 mt-0.5">All ingested IoCs from active threat feeds</p>
         </div>
 
-        {/* Type filter */}
-        <select
-          value={typeFilter}
-          onChange={e => { setTypeFilter(e.target.value); setPage(0); }}
-          className="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-sky-500"
-        >
-          <option value="">All Types</option>
-          {['ipv4','ipv6','url','domain','md5','sha256'].map(t => (
-            <option key={t} value={t}>{t.toUpperCase()}</option>
-          ))}
-        </select>
+        <div className="flex items-center space-x-3">
+          {/* Plan Tier Selector */}
+          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5 text-xs">
+            <button
+              onClick={() => { setPlan('free'); setPage(0); }}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                plan === 'free' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Free (24h)
+            </button>
+            <button
+              onClick={() => { setPlan('pro'); setPage(0); }}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                plan === 'pro' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Pro (All)
+            </button>
+          </div>
+
+          {/* Type filter */}
+          <select
+            value={typeFilter}
+            onChange={e => { setTypeFilter(e.target.value); setPage(0); }}
+            className="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-sky-500"
+          >
+            <option value="">All Types</option>
+            {['ipv4','ipv6','url','domain','md5','sha256'].map(t => (
+              <option key={t} value={t}>{t.toUpperCase()}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="bg-[#1E293B] border border-slate-800 rounded-xl overflow-hidden shadow-lg">
